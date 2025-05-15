@@ -256,8 +256,8 @@ function compressAndTrack(line, fixedIndex, isRow, reverse = false) {
 
     movements.push({
       value: { value: val, wasMerged },
-      from,
-      to
+      from: fromPos,
+      to: toPos
     });
     });
 
