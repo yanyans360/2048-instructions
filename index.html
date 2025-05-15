@@ -238,44 +238,24 @@ function compressAndTrack(line, fixedIndex, isRow, reverse = false) {
   const wasMerged = obj.wasMerged;
   if (val === 0) return;
 
+  const originalIndices = pairs[i] || [];
+  const fromIndex = originalIndices[0];
 
-    const originalIndices = pairs[i] || [];
-    const from = originalIndices[0];
+  const from = isRow
+    ? { row: fixedIndex, col: reverse ? 3 - fromIndex : fromIndex }
+    : { row: reverse ? 3 - fromIndex : fromIndex, col: fixedIndex };
 
-    const movement = isRow
-      ? {
-          value: val,
-          from: { row: fixedIndex, col: reverse ? 3 - from : from },
-          to: { row: fixedIndex, col: reverse ? 3 - i : i },
-        }
-      : {
-          value: val,
-          from: { row: reverse ? 3 - from : from, col: fixedIndex },
-          to: { row: reverse ? 3 - i : i, col: fixedIndex },
-        };
+  const to = isRow
+    ? { row: fixedIndex, col: reverse ? 3 - i : i }
+    : { row: reverse ? 3 - i : i, col: fixedIndex };
 
-    result.forEach((obj, i) => {
-      const val = obj.value;
-      const wasMerged = obj.wasMerged;
-      if (val === 0) return;
-    
-      const originalIndices = pairs[i] || [];
-      const fromIndex = originalIndices[0];
-    
-      const from = isRow
-        ? { row: fixedIndex, col: reverse ? 3 - fromIndex : fromIndex }
-        : { row: reverse ? 3 - fromIndex : fromIndex, col: fixedIndex };
-    
-      const to = isRow
-        ? { row: fixedIndex, col: reverse ? 3 - i : i }
-        : { row: reverse ? 3 - i : i, col: fixedIndex };
-    
-      movements.push({
-        value: { value: val, wasMerged },
-        from,
-        to
-      });
-    });
+  movements.push({
+    value: { value: val, wasMerged },
+    from,
+    to
+  });
+});
+
 
 
   return { result, movements };
