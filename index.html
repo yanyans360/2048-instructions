@@ -131,52 +131,35 @@ function rotateMatrix180(matrix) {
 }
 
 
-function animateBoard(previousBoard) {
+function animateBoard(movements) {
   const container = document.getElementById("grid-container");
   container.innerHTML = "";
 
-  for (let r = 0; r < 4; r++) {
-    for (let c = 0; c < 4; c++) {
-      const value = board[r][c];
-      if (value === 0) continue;
+  movements.forEach(({ value, from, to }) => {
+    const tile = document.createElement("div");
+    tile.className = "tile";
+    tile.textContent = value;
+    tile.style.position = "absolute";
+    tile.style.width = "80px";
+    tile.style.height = "80px";
 
-      const tile = document.createElement("div");
-      tile.className = "tile";
-      tile.textContent = value;
-
-      // Find previous position (first match of value)
-      let found = false;
-      for (let pr = 0; pr < 4 && !found; pr++) {
-        for (let pc = 0; pc < 4 && !found; pc++) {
-          if (previousBoard[pr][pc] === value) {
-            tile.style.transform = `translate(${pc * 90}px, ${pr * 90}px)`;
-            previousBoard[pr][pc] = null;
-            found = true;
-          }
-        }
-      }
-      
-      if (!found) {
-        // New tile: skip animation
-        tile.style.transform = `translate(${c * 90}px, ${r * 90}px)`;
-        tile.style.transition = "none";
-      }
-
-
-      tile.style.position = "absolute";
-      tile.style.width = "80px";
-      tile.style.height = "80px";
+    // NEW TILE (spawn)
+    if (from.row === to.row && from.col === to.col) {
+      tile.style.transition = "none";
+      tile.style.transform = `translate(${to.col * 90}px, ${to.row * 90}px)`;
+    } else {
+      tile.style.transform = `translate(${from.col * 90}px, ${from.row * 90}px)`;
       tile.style.transition = "transform 0.2s ease-in-out";
 
+      // Reflow then animate
       container.appendChild(tile);
-
-      // Trigger reflow to apply starting transform
       void tile.offsetWidth;
-
-      // Animate to new position
-      tile.style.transform = `translate(${c * 90}px, ${r * 90}px)`;
+      tile.style.transform = `translate(${to.col * 90}px, ${to.row * 90}px)`;
+      return;
     }
-  }
+
+    container.appendChild(tile);
+  });
 
   container.style.position = "relative";
   container.style.width = "360px";
@@ -207,50 +190,64 @@ function rotateLeft(matrix) {
 
 function move(direction) {
   let moved = false;
-  let previousBoard = board.map(row => row.slice());
+  let movements = [];
   let newBoard = Array(4).fill().map(() => Array(4).fill(0));
 
-  function processLine(line) {
+  function processLine(line, r, isRow) {
     let compressed = compress(line);
     let merged = merge(compressed);
-    return compress(merged);
+    let result = compress(merged);
+    for (let i = 0; i < 4; i++) {
+      const val = result[i];
+      if (val !== 0) {
+        if (isRow) {
+          const oldCol = line.indexOf(val);
+          movements.push({ value: val, from: { row: r, col: oldCol }, to: { row: r, col: i } });
+        } else {
+          const oldRow = line.indexOf(val);
+          movements.push({ value: val, from: { row: oldRow, col: r }, to: { row: i, col: r } });
+        }
+      }
+    }
+    return result;
   }
 
   if (direction === "left") {
     for (let r = 0; r < 4; r++) {
-      let newRow = processLine(board[r]);
-      if (JSON.stringify(newRow) !== JSON.stringify(board[r])) moved = true;
-      newBoard[r] = newRow;
+      const line = board[r];
+      const processed = processLine(line, r, true);
+      if (JSON.stringify(processed) !== JSON.stringify(line)) moved = true;
+      newBoard[r] = processed;
     }
   }
 
   if (direction === "right") {
     for (let r = 0; r < 4; r++) {
-      let reversed = [...board[r]].reverse();
-      let newRow = processLine(reversed).reverse();
-      if (JSON.stringify(newRow) !== JSON.stringify(board[r])) moved = true;
-      newBoard[r] = newRow;
+      const line = [...board[r]].reverse();
+      const processed = processLine(line, r, true).reverse();
+      if (JSON.stringify(processed) !== JSON.stringify(board[r])) moved = true;
+      newBoard[r] = processed;
     }
   }
 
   if (direction === "up") {
     for (let c = 0; c < 4; c++) {
-      let col = [board[0][c], board[1][c], board[2][c], board[3][c]];
-      let newCol = processLine(col);
+      const col = [board[0][c], board[1][c], board[2][c], board[3][c]];
+      const processed = processLine(col, c, false);
       for (let r = 0; r < 4; r++) {
-        if (board[r][c] !== newCol[r]) moved = true;
-        newBoard[r][c] = newCol[r];
+        if (board[r][c] !== processed[r]) moved = true;
+        newBoard[r][c] = processed[r];
       }
     }
   }
 
   if (direction === "down") {
     for (let c = 0; c < 4; c++) {
-      let col = [board[0][c], board[1][c], board[2][c], board[3][c]].reverse();
-      let newCol = processLine(col).reverse();
+      const col = [board[3][c], board[2][c], board[1][c], board[0][c]];
+      const processed = processLine(col, c, false).reverse();
       for (let r = 0; r < 4; r++) {
-        if (board[r][c] !== newCol[r]) moved = true;
-        newBoard[r][c] = newCol[r];
+        if (board[r][c] !== processed[r]) moved = true;
+        newBoard[r][c] = processed[r];
       }
     }
   }
@@ -258,13 +255,14 @@ function move(direction) {
   if (moved) {
     board = newBoard;
     addRandomTile();
-    animateBoard(previousBoard);
+    animateBoard(movements);
     giveAdvice();
     if (getEmptyTiles().length === 0 && !canMerge()) {
       document.getElementById("game-over").style.display = "block";
     }
   }
 }
+
 
 
 function canMerge() {
@@ -338,7 +336,13 @@ addRandomTile();
 animateBoard(board.map(row => row.slice()));
 giveAdvice();
 
-const commitMessage = "feat: implement smooth tile sliding using tracked positions and CSS transform animations";
+fetch('https://api.github.com/repos/YOUR_USERNAME/YOUR_REPO/commits')
+  .then(res => res.json())
+  .then(data => {
+    const latestCommit = data[0].commit.message;
+    document.getElementById("commit-msg").textContent = latestCommit;
+  });
+
 document.getElementById("commit-msg").textContent = commitMessage;
 
 
