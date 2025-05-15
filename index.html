@@ -12,6 +12,14 @@
       grid-gap: 10px;
       margin-top: 1rem;
     }
+    #grid-container {
+      position: relative;
+      width: 360px;
+      height: 360px;
+      background: #222;
+      margin-top: 1rem;
+    }
+
     .tile {
       transition: all 0.15s ease-in-out;
     }
@@ -120,18 +128,27 @@ function rotateMatrix180(matrix) {
 }
 
 
-function drawBoard() {
+function animateBoard() {
   const container = document.getElementById("grid-container");
   container.innerHTML = "";
   for (let r = 0; r < 4; r++) {
     for (let c = 0; c < 4; c++) {
+      const tileValue = board[r][c];
       const tile = document.createElement("div");
       tile.className = "tile";
-      tile.textContent = board[r][c] === 0 ? "" : board[r][c];
+      tile.textContent = tileValue !== 0 ? tileValue : "";
+      tile.style.transform = `translate(${c * 90}px, ${r * 90}px)`; // visually position it
+      tile.style.position = "absolute";
+      tile.style.width = "80px";
+      tile.style.height = "80px";
       container.appendChild(tile);
     }
   }
+  container.style.position = "relative";
+  container.style.width = "360px";
+  container.style.height = "360px";
 }
+
 
 function compress(row) {
   const newRow = row.filter(x => x !== 0);
@@ -156,8 +173,8 @@ function rotateLeft(matrix) {
 function move(direction) {
   let rotated;
   if (direction === "up") rotated = rotateMatrixLeft(board);
-  else if (direction === "right") rotated = rotateMatrix180(board);
   else if (direction === "down") rotated = rotateMatrixRight(board);
+  else if (direction === "right") rotated = rotateMatrix180(board);
   else rotated = board.map(row => [...row]); // left (no rotation)
 
   let moved = rotated.map(row => merge(compress(row)));
@@ -165,19 +182,19 @@ function move(direction) {
   if (JSON.stringify(moved) === JSON.stringify(rotated)) return; // No move
 
   if (direction === "up") board = rotateMatrixRight(moved);
-  else if (direction === "right") board = rotateMatrix180(moved);
   else if (direction === "down") board = rotateMatrixLeft(moved);
+  else if (direction === "right") board = rotateMatrix180(moved);
   else board = moved;
 
   addRandomTile();
-  drawBoard();
+  animateBoard(); // instead of just drawBoard()
   giveAdvice();
-
-
+  
   if (getEmptyTiles().length === 0 && !canMerge()) {
     document.getElementById("game-over").style.display = "block";
   }
 }
+
 
 function canMerge() {
   for (let r = 0; r < 4; r++) {
