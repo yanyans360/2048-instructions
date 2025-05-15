@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>2048 Triage Advisor</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: #0f0f0f;
+      color: #f2f2f2;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      min-height: 100vh;
+      margin: 0;
+      padding: 2rem;
+    }
+    h1 {
+      font-size: 2rem;
+      margin-bottom: 1rem;
+    }
+    textarea {
+      width: 300px;
+      height: 180px;
+      padding: 1rem;
+      background: #1a1a1a;
+      border: 1px solid #333;
+      border-radius: 8px;
+      color: #f2f2f2;
+      resize: none;
+      font-family: monospace;
+      font-size: 1rem;
+      margin-bottom: 1rem;
+    }
+    button {
+      padding: 0.75rem 1.5rem;
+      background-color: #06c;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: 600;
+    }
+    button:hover {
+      background-color: #058;
+    }
+    #output {
+      margin-top: 1.5rem;
+      white-space: pre-wrap;
+      font-size: 1rem;
+      background: #1c1c1c;
+      padding: 1rem;
+      border-radius: 8px;
+      width: 320px;
+    }
+  </style>
+</head>
+<body>
+  <h1>🧠 2048 AI Advisor</h1>
+  <p>Paste your 4x4 board as a Python list-of-lists (e.g. [[2,0,0,2],...])</p>
+  <textarea id="boardInput" placeholder="Paste board here..."></textarea>
+  <button onclick="analyzeBoard()">Analyze Board</button>
+  <div id="output"></div>
+
+  <script>
+    function isDescending(arr) {
+      return arr.every((val, i, a) => i === 0 || a[i - 1] >= val);
+    }
+
+    function analyzeBoard() {
+      const raw = document.getElementById("boardInput").value;
+      try {
+        const board = JSON.parse(raw);
+        if (!Array.isArray(board) || board.length !== 4 || !board.every(row => Array.isArray(row) && row.length === 4)) {
+          throw new Error("Invalid format. Expected 4x4 array.");
+        }
+
+        const row0 = board[0];
+        const col0 = board.map(row => row[0]);
+        const flat = board.flat();
+        const max = Math.max(...flat);
+        const mergeablePairs = [];
+
+        for (let i = 0; i < 4; i++) {
+          for (let j = 0; j < 3; j++) {
+            if (board[i][j] !== 0 && board[i][j] === board[i][j + 1]) mergeablePairs.push([[i, j], [i, j + 1]]);
+            if (board[j][i] !== 0 && board[j][i] === board[j + 1][i]) mergeablePairs.push([[j, i], [j + 1, i]]);
+          }
+        }
+
+        const inv = {
+          'King in corner': board[0][0] === max,
+          'Row 0 full': row0.every(v => v !== 0),
+          'Column 0 full': col0.every(v => v !== 0),
+          'Row 0 descending': isDescending(row0),
+          'Column 0 descending': isDescending(col0),
+          'Row 1 descending': isDescending(board[1]),
+          'Board full & no merges': flat.every(x => x !== 0) && mergeablePairs.length === 0,
+        };
+
+        let advice = "All invariants green. Continue normal play: LEFT until no change, then UP.";
+        if (!inv['King in corner']) advice = "Move the king (largest tile) to top-left using UP and LEFT.";
+        else if (!inv['Row 0 full']) advice = "Row 0 not full. Try UP (if col 3 filled), else Row-0 Pump (Down → Up).";
+        else if (!inv['Column 0 full']) advice = "Column 0 has a gap. Use Column-0 Pump (Down → optional Left → Up).";
+        else if (!inv['Row 0 descending']) advice = "Row 0 out of order. Use Down → Left → Up.";
+        else if (!inv['Column 0 descending']) advice = "Column 0 out of order. Use Down → Left → Up.";
+        else if (!inv['Row 1 descending']) advice = "Row 1 out of order. If stuck, Down → Left → Up.";
+        else if (inv['Board full & no merges']) advice = "Board is full with no merges. Use Up → Left to force a vertical merge.";
+
+        const result = Object.entries(inv).map(([k, v]) => `✅ ${k}`.replace('✅', v ? '✅' : '❌')).join("\n");
+        document.getElementById("output").textContent = `${advice}\n\n${result}`;
+      } catch (err) {
+        document.getElementById("output").textContent = `❌ Error: ${err.message}`;
+      }
+    }
+  </script>
+</body>
+</html>
