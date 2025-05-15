@@ -99,6 +99,9 @@
 <div id="version" style="margin-top: 1rem; font-size: 0.85rem; color: #aaa;">
   Version: <code id="commit-msg">[loading...]</code>
 </div>
+<div id="debug-keys" style="margin-top: 0.5rem; font-size: 0.9rem; color: #ccc;">
+  Last key: <code id="last-key">none</code>
+</div>
 <script>
 let board = Array(4).fill().map(() => Array(4).fill(0));
 
@@ -193,50 +196,54 @@ function move(direction) {
   let movements = [];
   let newBoard = Array(4).fill().map(() => Array(4).fill(0));
 
-  function processLine(line, r, isRow) {
-    let compressed = compress(line);
-    let merged = merge(compressed);
-    let result = compress(merged);
-    for (let i = 0; i < 4; i++) {
-      const val = result[i];
-      if (val !== 0) {
-        if (isRow) {
-          const oldCol = line.indexOf(val);
-          movements.push({ value: val, from: { row: r, col: oldCol }, to: { row: r, col: i } });
-        } else {
-          const oldRow = line.indexOf(val);
-          movements.push({ value: val, from: { row: oldRow, col: r }, to: { row: i, col: r } });
-        }
+  function compressAndTrack(line, fixedIndex, isRow, reverse = false) {
+    let result = compress(merge(compress(line)));
+    let sourceIndices = [];
+
+    // Track how values moved (brute-force style)
+    for (let i = 0, j = 0; i < 4; i++) {
+      if (result[i] === 0) continue;
+      while (j < 4 && line[j] !== result[i]) j++;
+      if (j < 4) {
+        const from = isRow
+          ? { row: fixedIndex, col: reverse ? 3 - j : j }
+          : { row: reverse ? 3 - j : j, col: fixedIndex };
+        const to = isRow
+          ? { row: fixedIndex, col: reverse ? 3 - i : i }
+          : { row: reverse ? 3 - i : i, col: fixedIndex };
+        movements.push({ value: result[i], from, to });
+        j++;
       }
     }
+
     return result;
   }
 
   if (direction === "left") {
     for (let r = 0; r < 4; r++) {
-      const line = board[r];
-      const processed = processLine(line, r, true);
-      if (JSON.stringify(processed) !== JSON.stringify(line)) moved = true;
-      newBoard[r] = processed;
+      const row = board[r];
+      const result = compressAndTrack(row, r, true);
+      if (JSON.stringify(result) !== JSON.stringify(row)) moved = true;
+      newBoard[r] = result;
     }
   }
 
   if (direction === "right") {
     for (let r = 0; r < 4; r++) {
-      const line = [...board[r]].reverse();
-      const processed = processLine(line, r, true).reverse();
-      if (JSON.stringify(processed) !== JSON.stringify(board[r])) moved = true;
-      newBoard[r] = processed;
+      const row = [...board[r]].reverse();
+      const result = compressAndTrack(row, r, true, true).reverse();
+      if (JSON.stringify(result) !== JSON.stringify(board[r])) moved = true;
+      newBoard[r] = result;
     }
   }
 
   if (direction === "up") {
     for (let c = 0; c < 4; c++) {
       const col = [board[0][c], board[1][c], board[2][c], board[3][c]];
-      const processed = processLine(col, c, false);
+      const result = compressAndTrack(col, c, false);
       for (let r = 0; r < 4; r++) {
-        if (board[r][c] !== processed[r]) moved = true;
-        newBoard[r][c] = processed[r];
+        if (board[r][c] !== result[r]) moved = true;
+        newBoard[r][c] = result[r];
       }
     }
   }
@@ -244,10 +251,10 @@ function move(direction) {
   if (direction === "down") {
     for (let c = 0; c < 4; c++) {
       const col = [board[3][c], board[2][c], board[1][c], board[0][c]];
-      const processed = processLine(col, c, false).reverse();
+      const result = compressAndTrack(col, c, false, true).reverse();
       for (let r = 0; r < 4; r++) {
-        if (board[r][c] !== processed[r]) moved = true;
-        newBoard[r][c] = processed[r];
+        if (board[r][c] !== result[r]) moved = true;
+        newBoard[r][c] = result[r];
       }
     }
   }
@@ -265,6 +272,7 @@ function move(direction) {
 
 
 
+
 function canMerge() {
   for (let r = 0; r < 4; r++) {
     for (let c = 0; c < 4; c++) {
@@ -276,6 +284,7 @@ function canMerge() {
 }
 
 document.addEventListener("keydown", (e) => {
+  document.getElementById("last-key").textContent = e.key;
   switch (e.key) {
     case "ArrowUp": move("up"); break;
     case "ArrowRight": move("right"); break;
