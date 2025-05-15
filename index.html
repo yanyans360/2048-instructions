@@ -96,6 +96,9 @@
   <div id="grid-container"></div>
   <div id="game-over" style="display: none;">Game Over</div>
 </div>
+<div id="version" style="margin-top: 1rem; font-size: 0.85rem; color: #aaa;">
+  Version: <code id="commit-msg">[loading...]</code>
+</div>
 <script>
 let board = Array(4).fill().map(() => Array(4).fill(0));
 
@@ -325,9 +328,11 @@ function giveAdvice() {
 
 
 addRandomTile();
-animateBoard();
+animateBoard(board.map(row => row.slice()));
 giveAdvice();
 
+const commitMessage = "feat: implement smooth tile sliding using tracked positions and CSS transform animations";
+document.getElementById("commit-msg").textContent = commitMessage;
 
 
 </script>
