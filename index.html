@@ -12,7 +12,10 @@
       grid-gap: 10px;
       margin-top: 1rem;
     }
-    
+    .tile {
+      transition: all 0.15s ease-in-out;
+    }
+
     .tile {
       width: 80px;
       height: 80px;
@@ -104,6 +107,18 @@ function addRandomTile() {
   const [r, c] = empty[Math.floor(Math.random() * empty.length)];
   board[r][c] = Math.random() < 0.9 ? 2 : 4;
 }
+function rotateMatrixLeft(matrix) {
+  return matrix[0].map((_, i) => matrix.map(row => row[3 - i]));
+}
+
+function rotateMatrixRight(matrix) {
+  return matrix[0].map((_, i) => matrix.map(row => row[i])).reverse();
+}
+
+function rotateMatrix180(matrix) {
+  return rotateMatrixLeft(rotateMatrixLeft(matrix));
+}
+
 
 function drawBoard() {
   const container = document.getElementById("grid-container");
@@ -139,29 +154,28 @@ function rotateLeft(matrix) {
 }
 
 function move(direction) {
-  let newBoard = board.map(row => row.slice());
+  let rotated;
+  if (direction === "up") rotated = rotateMatrixLeft(board);
+  else if (direction === "right") rotated = rotateMatrix180(board);
+  else if (direction === "down") rotated = rotateMatrixRight(board);
+  else rotated = board.map(row => [...row]); // left (no rotation)
 
-  for (let i = 0; i < direction; i++) {
-    newBoard = rotateLeft(newBoard);
-  }
+  let moved = rotated.map(row => merge(compress(row)));
 
-  for (let r = 0; r < 4; r++) {
-    let compressed = compress(newBoard[r]);
-    let merged = merge(compressed);
-    newBoard[r] = merged;
-  }
+  if (JSON.stringify(moved) === JSON.stringify(rotated)) return; // No move
 
-  for (let i = 0; i < (4 - direction) % 4; i++) {
-    newBoard = rotateLeft(newBoard);
-  }
+  if (direction === "up") board = rotateMatrixRight(moved);
+  else if (direction === "right") board = rotateMatrix180(moved);
+  else if (direction === "down") board = rotateMatrixLeft(moved);
+  else board = moved;
 
-  if (JSON.stringify(board) !== JSON.stringify(newBoard)) {
-    board = newBoard;
-    addRandomTile();
-    drawBoard();
-    if (getEmptyTiles().length === 0 && !canMerge()) {
-      document.getElementById("game-over").style.display = "block";
-    }
+  addRandomTile();
+  drawBoard();
+  giveAdvice();
+
+
+  if (getEmptyTiles().length === 0 && !canMerge()) {
+    document.getElementById("game-over").style.display = "block";
   }
 }
 
@@ -177,16 +191,65 @@ function canMerge() {
 
 document.addEventListener("keydown", (e) => {
   switch (e.key) {
-    case "ArrowUp": move(0); break;
-    case "ArrowRight": move(1); break;
-    case "ArrowDown": move(2); break;
-    case "ArrowLeft": move(3); break;
+    case "ArrowUp": move("up"); break;
+    case "ArrowRight": move("right"); break;
+    case "ArrowDown": move("down"); break;
+    case "ArrowLeft": move("left"); break;
   }
 });
 
-addRandomTile();
+function giveAdvice() {
+  const row0 = board[0];
+  const col0 = board.map(row => row[0]);
+  const flat = board.flat();
+  const max = Math.max(...flat);
+  const mergeablePairs = [];
+
+  for (let i = 0; i < 4; i++) {
+    for (let j = 0; j < 3; j++) {
+      if (board[i][j] !== 0 && board[i][j] === board[i][j + 1]) mergeablePairs.push([[i, j], [i, j + 1]]);
+      if (board[j][i] !== 0 && board[j][i] === board[j + 1][i]) mergeablePairs.push([[j, i], [j + 1, i]]);
+    }
+  }
+
+  function isDescending(arr) {
+    return arr.every((val, i, a) => i === 0 || a[i - 1] >= val);
+  }
+
+  const inv = {
+    'King in corner': board[0][0] === max,
+    'Row 0 full': row0.every(v => v !== 0),
+    'Column 0 full': col0.every(v => v !== 0),
+    'Row 0 descending': isDescending(row0),
+    'Column 0 descending': isDescending(col0),
+    'Row 1 descending': isDescending(board[1]),
+    'Board full & no merges': flat.every(x => x !== 0) && mergeablePairs.length === 0,
+  };
+
+  let advice = "All invariants green. Continue normal play: LEFT until no change, then UP.";
+  if (!inv['King in corner']) advice = "Move the king (largest tile) to top-left using UP and LEFT.";
+  else if (!inv['Row 0 full']) advice = "Row 0 not full. Try UP (if col 3 filled), else Row-0 Pump (Down → Up).";
+  else if (!inv['Column 0 full']) advice = "Column 0 has a gap. Use Column-0 Pump (Down → optional Left → Up).";
+  else if (!inv['Row 0 descending']) advice = "Row 0 out of order. Use Down → Left → Up.";
+  else if (!inv['Column 0 descending']) advice = "Column 0 out of order. Use Down → Left → Up.";
+  else if (!inv['Row 1 descending']) advice = "Row 1 out of order. If stuck, Down → Left → Up.";
+  else if (inv['Board full & no merges']) advice = "Board is full with no merges. Use Up → Left to force a vertical merge.";
+
+  const result = Object.entries(inv).map(([k, v]) => `${v ? '✅' : '❌'} ${k}`).join("\n");
+  let out = document.getElementById("output");
+  if (!out) {
+    out = document.createElement("div");
+    out.id = "output";
+    document.body.appendChild(out);
+  }
+  out.textContent = `${advice}\n\n${result}`;
+}
+
+
 addRandomTile();
 drawBoard();
+giveAdvice();
+
 </script>
 
 
