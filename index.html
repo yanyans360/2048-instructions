@@ -171,43 +171,64 @@ function rotateLeft(matrix) {
 }
 
 function move(direction) {
-  let transformIn, transformOut;
+  let moved = false;
+  let newBoard = Array(4).fill().map(() => Array(4).fill(0));
 
-  switch (direction) {
-    case "up":
-      transformIn = rotateMatrixRight;
-      transformOut = rotateMatrixLeft;
-      break;
-    case "down":
-      transformIn = rotateMatrixLeft;
-      transformOut = rotateMatrixRight;
-      break;
-    case "right":
-      transformIn = rotateMatrix180;
-      transformOut = rotateMatrix180;
-      break;
-    case "left":
-    default:
-      transformIn = (b) => b;
-      transformOut = (b) => b;
-      break;
+  function processLine(line) {
+    let compressed = compress(line);
+    let merged = merge(compressed);
+    return compress(merged);
   }
 
-  const rotated = transformIn(board).map(row => merge(compress(row)));
-  const restored = transformOut(rotated);
+  if (direction === "left") {
+    for (let r = 0; r < 4; r++) {
+      let newRow = processLine(board[r]);
+      if (JSON.stringify(newRow) !== JSON.stringify(board[r])) moved = true;
+      newBoard[r] = newRow;
+    }
+  }
 
-  if (JSON.stringify(board) === JSON.stringify(restored)) return;
+  if (direction === "right") {
+    for (let r = 0; r < 4; r++) {
+      let reversed = [...board[r]].reverse();
+      let newRow = processLine(reversed).reverse();
+      if (JSON.stringify(newRow) !== JSON.stringify(board[r])) moved = true;
+      newBoard[r] = newRow;
+    }
+  }
 
-  board = restored;
-  addRandomTile();
-  animateBoard();
-  giveAdvice();
+  if (direction === "up") {
+    for (let c = 0; c < 4; c++) {
+      let col = [board[0][c], board[1][c], board[2][c], board[3][c]];
+      let newCol = processLine(col);
+      for (let r = 0; r < 4; r++) {
+        if (board[r][c] !== newCol[r]) moved = true;
+        newBoard[r][c] = newCol[r];
+      }
+    }
+  }
 
-  if (getEmptyTiles().length === 0 && !canMerge()) {
-    document.getElementById("game-over").style.display = "block";
+  if (direction === "down") {
+    for (let c = 0; c < 4; c++) {
+      let col = [board[0][c], board[1][c], board[2][c], board[3][c]].reverse();
+      let newCol = processLine(col).reverse();
+      for (let r = 0; r < 4; r++) {
+        if (board[r][c] !== newCol[r]) moved = true;
+        newBoard[r][c] = newCol[r];
+      }
+    }
+  }
+
+  if (moved) {
+    board = newBoard;
+    addRandomTile();
+    animateBoard();
+    giveAdvice();
+    if (getEmptyTiles().length === 0 && !canMerge()) {
+      document.getElementById("game-over").style.display = "block";
+    }
   }
 }
-
 
 
 function canMerge() {
