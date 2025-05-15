@@ -254,12 +254,29 @@ function compressAndTrack(line, fixedIndex, isRow, reverse = false) {
           to: { row: reverse ? 3 - i : i, col: fixedIndex },
         };
 
-    movements.push({
-      value: { value: val, wasMerged },
-      from: fromPos,
-      to: toPos
+    result.forEach((obj, i) => {
+      const val = obj.value;
+      const wasMerged = obj.wasMerged;
+      if (val === 0) return;
+    
+      const originalIndices = pairs[i] || [];
+      const fromIndex = originalIndices[0];
+    
+      const from = isRow
+        ? { row: fixedIndex, col: reverse ? 3 - fromIndex : fromIndex }
+        : { row: reverse ? 3 - fromIndex : fromIndex, col: fixedIndex };
+    
+      const to = isRow
+        ? { row: fixedIndex, col: reverse ? 3 - i : i }
+        : { row: reverse ? 3 - i : i, col: fixedIndex };
+    
+      movements.push({
+        value: { value: val, wasMerged },
+        from,
+        to
+      });
     });
-    });
+
 
   return { result, movements };
 }
