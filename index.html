@@ -161,14 +161,16 @@ function animateBoard(movements) {
     const tile = document.createElement("div");
     tile.className = "tile";
 
-    tile.textContent = value;
-    tile.dataset.val = value;
+    tile.textContent = value.value;
+    tile.dataset.val = value.value;
     tile.style.position = "absolute";
     tile.style.width = "80px";
     tile.style.height = "80px";
 
-    const isMerge = from.row !== to.row || from.col !== to.col;
-    if (!isMerge) tile.classList.add("merge");
+    if (value.wasMerged) {
+      tile.classList.add("merge");
+    }
+
 
     tile.style.transform = `translate(${from.col * 90}px, ${from.row * 90}px)`;
     tile.style.transition = "transform 0.2s ease-in-out";
@@ -217,21 +219,25 @@ function compressAndTrack(line, fixedIndex, isRow, reverse = false) {
     const next = nonZero[i + 1];
 
     if (next && current.val === next.val) {
-      result.push(current.val * 2);
+      result.push({ value: current.val * 2, wasMerged: true });
       pairs.push([current.i, next.i]);
       i++; // skip next
     } else {
-      result.push(current.val);
+      result.push({ value: current.val, wasMerged: false });
       pairs.push([current.i]);
     }
   }
 
-  while (result.length < 4) result.push(0);
+  while (result.length < 4) result.push({ value: 0, wasMerged: false });
+
 
   const movements = [];
 
-  result.forEach((val, i) => {
-    if (val === 0) return;
+ result.forEach((obj, i) => {
+  const val = obj.value;
+  const wasMerged = obj.wasMerged;
+  if (val === 0) return;
+
 
     const originalIndices = pairs[i] || [];
     const from = originalIndices[0];
@@ -248,8 +254,11 @@ function compressAndTrack(line, fixedIndex, isRow, reverse = false) {
           to: { row: reverse ? 3 - i : i, col: fixedIndex },
         };
 
-    movements.push(movement);
-  });
+    movements.push({
+      value: { value: val, wasMerged },
+      from,
+      to
+    });
 
   return { result, movements };
 }
