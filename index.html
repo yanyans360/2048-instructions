@@ -150,11 +150,18 @@ function animateBoard(previousBoard) {
         for (let pc = 0; pc < 4 && !found; pc++) {
           if (previousBoard[pr][pc] === value) {
             tile.style.transform = `translate(${pc * 90}px, ${pr * 90}px)`;
-            previousBoard[pr][pc] = null; // prevent reuse of same tile
+            previousBoard[pr][pc] = null;
             found = true;
           }
         }
       }
+      
+      if (!found) {
+        // New tile: skip animation
+        tile.style.transform = `translate(${c * 90}px, ${r * 90}px)`;
+        tile.style.transition = "none";
+      }
+
 
       tile.style.position = "absolute";
       tile.style.width = "80px";
