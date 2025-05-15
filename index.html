@@ -171,29 +171,43 @@ function rotateLeft(matrix) {
 }
 
 function move(direction) {
-  let rotated;
-  if (direction === "up") rotated = rotateMatrixLeft(board);
-  else if (direction === "down") rotated = rotateMatrixRight(board);
-  else if (direction === "right") rotated = rotateMatrix180(board);
-  else rotated = board.map(row => [...row]); // left (no rotation)
+  let transformIn, transformOut;
 
-  let moved = rotated.map(row => merge(compress(row)));
+  switch (direction) {
+    case "up":
+      transformIn = rotateMatrixRight;
+      transformOut = rotateMatrixLeft;
+      break;
+    case "down":
+      transformIn = rotateMatrixLeft;
+      transformOut = rotateMatrixRight;
+      break;
+    case "right":
+      transformIn = rotateMatrix180;
+      transformOut = rotateMatrix180;
+      break;
+    case "left":
+    default:
+      transformIn = (b) => b;
+      transformOut = (b) => b;
+      break;
+  }
 
-  if (JSON.stringify(moved) === JSON.stringify(rotated)) return; // No move
+  const rotated = transformIn(board).map(row => merge(compress(row)));
+  const restored = transformOut(rotated);
 
-  if (direction === "up") board = rotateMatrixRight(moved);
-  else if (direction === "down") board = rotateMatrixLeft(moved);
-  else if (direction === "right") board = rotateMatrix180(moved);
-  else board = moved;
+  if (JSON.stringify(board) === JSON.stringify(restored)) return;
 
+  board = restored;
   addRandomTile();
-  animateBoard(); // instead of just drawBoard()
+  animateBoard();
   giveAdvice();
-  
+
   if (getEmptyTiles().length === 0 && !canMerge()) {
     document.getElementById("game-over").style.display = "block";
   }
 }
+
 
 
 function canMerge() {
