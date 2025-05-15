@@ -162,6 +162,7 @@ function animateBoard(movements) {
     tile.className = "tile";
 
     tile.textContent = value;
+    tile.dataset.val = value;
     tile.style.position = "absolute";
     tile.style.width = "80px";
     tile.style.height = "80px";
@@ -405,7 +406,7 @@ fetch('https://api.github.com/repos/yanyans360/2048-instructions/commits')
     document.getElementById("commit-msg").textContent = "(could not fetch commit)";
   });
 
-tile.dataset.val = value;
+
 
 
 </script>
